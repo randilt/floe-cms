@@ -141,23 +141,78 @@ func NewRouter(authManager *auth.Manager, db *db.DB, storage storage.Manager, ad
 
 	// Set up admin UI
 	fmt.Println("Setting up admin UI routes...")
-	
-	// Find the embedded filesystem
+
+	// Extract the embedded filesystem
 	adminUIFS, err := fs.Sub(adminUI, "web/admin/dist")
 	if err != nil {
 		fmt.Printf("Error creating subfolder for admin UI: %v\n", err)
-		// Fall back to root if subfolder fails
 		adminUIFS = adminUI
 	}
-	
-	// List all files in the embedded filesystem for debugging
+
+	// Embed file logging for debugging - list all available files
 	fmt.Println("Contents of embedded filesystem:")
-	listEmbeddedFiles(adminUIFS, "")
-	
-	// First try direct HTTP file server - this is the cleanest approach if it works
-	fsServer := http.FileServer(http.FS(adminUIFS))
-	
-	// Serve static files and SPA routes
+	entries, err := fs.ReadDir(adminUIFS, ".")
+	if err != nil {
+		fmt.Printf("Error reading root directory: %v\n", err)
+	} else {
+		for _, entry := range entries {
+			fmt.Printf("Root entry: %s (is dir: %v)\n", entry.Name(), entry.IsDir())
+		}
+		
+		// Check assets directory specifically if it exists
+		assetsEntries, err := fs.ReadDir(adminUIFS, "assets")
+		if err != nil {
+			fmt.Printf("Error reading assets directory: %v\n", err)
+		} else {
+			for _, entry := range assetsEntries {
+				fmt.Printf("Asset file: %s\n", entry.Name())
+			}
+		}
+	}
+
+	// Create a custom file server wrapper that sets appropriate headers
+	fileServerWithHeaders := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		
+		// Set appropriate content type based on file extension
+		if strings.HasSuffix(path, ".css") {
+			w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		} else if strings.HasSuffix(path, ".js") {
+			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		} else if strings.HasSuffix(path, ".svg") {
+			w.Header().Set("Content-Type", "image/svg+xml")
+		}
+		
+		// Set caching headers for static assets
+		if strings.HasPrefix(path, "/assets/") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000")
+		}
+		
+		// Log the request
+		fmt.Printf("Serving file: %s\n", path)
+		
+		// Serve the file using the standard file server
+		http.FileServer(http.FS(adminUIFS)).ServeHTTP(w, r)
+	})
+
+	// Serve static files from the assets directory using a parameter instead of wildcard
+	r.Get("/assets/{file}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Adjust path to include the assets directory
+		filePath := strings.TrimPrefix(r.URL.Path, "/")
+		r.URL.Path = "/" + filePath
+		fileServerWithHeaders.ServeHTTP(w, r)
+	}))
+
+	// Serve common root files
+	r.Get("/favicon.ico", fileServerWithHeaders)
+	r.Get("/vite.svg", fileServerWithHeaders)
+
+	// Special handler for CSS/JS files that might be requested directly
+	r.Get("/{file}.css", fileServerWithHeaders)
+	r.Get("/{file}.js", fileServerWithHeaders)
+	r.Get("/{file}.js.map", fileServerWithHeaders)
+
+	// SPA route handler - serve index.html for all other routes
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		// Skip API requests
 		if strings.HasPrefix(r.URL.Path, "/api/") {
@@ -165,71 +220,27 @@ func NewRouter(authManager *auth.Manager, db *db.DB, storage storage.Manager, ad
 			return
 		}
 		
-		fmt.Printf("Request path: %s\n", r.URL.Path)
+		fmt.Printf("SPA route request: %s\n", r.URL.Path)
 		
-		// For root path or paths that don't exist as files, serve index.html
-		reqPath := strings.TrimPrefix(r.URL.Path, "/")
-		if reqPath == "" || reqPath == "admin" {
-			reqPath = "index.html"
-		}
-		
-		// Try to open the file to check if it exists
-		f, err := adminUIFS.Open(reqPath)
-		if err != nil {
-			// If file doesn't exist, serve index.html for SPA routing
-			fmt.Printf("File not found: %s, serving index.html instead\n", reqPath)
-			indexData, err := fs.ReadFile(adminUIFS, "index.html")
-			if err != nil {
-				http.Error(w, "Not Found", http.StatusNotFound)
-				return
-			}
-			
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
-			w.Write(indexData)
+		// Try to see if this is a static file first that we missed in our specific handlers
+		if strings.Contains(r.URL.Path, ".") {
+			fileServerWithHeaders.ServeHTTP(w, r)
 			return
 		}
-		f.Close()
 		
-		// File exists, serve it directly
-		fmt.Printf("Serving file: %s\n", reqPath)
+		// Otherwise serve index.html for client-side routing
+		indexPath := "index.html"
+		indexData, err := fs.ReadFile(adminUIFS, indexPath)
+		if err != nil {
+			fmt.Printf("Error reading index.html: %v\n", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 		
-		// Need to rewrite the URL Path to match the expected file structure
-		originalPath := r.URL.Path
-		r.URL.Path = "/" + reqPath
-		fsServer.ServeHTTP(w, r)
-		// Restore the original path in case middleware depends on it
-		r.URL.Path = originalPath
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write(indexData)
 	})
 
 	return r
-}
-
-// Helper function to list all files in the embedded filesystem
-func listEmbeddedFiles(fsys fs.FS, dir string) {
-	entries, err := fs.ReadDir(fsys, dir)
-	if err != nil {
-		fmt.Printf("Error reading directory %s: %v\n", dir, err)
-		return
-	}
-	
-	for _, entry := range entries {
-		path := dir
-		if path != "" {
-			path += "/"
-		}
-		path += entry.Name()
-		
-		if entry.IsDir() {
-			fmt.Printf("Directory: %s\n", path)
-			listEmbeddedFiles(fsys, path)
-		} else {
-			info, err := entry.Info()
-			if err == nil {
-				fmt.Printf("File: %s (size: %d bytes)\n", path, info.Size())
-			} else {
-				fmt.Printf("File: %s\n", path)
-			}
-		}
-	}
 }

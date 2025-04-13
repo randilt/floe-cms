@@ -25,7 +25,7 @@ auth:
   admin_email: admin@floe.cms
   admin_password: adminpassword
   password_min_length: 8
-  rate_limit_requests: 100
+  rate_limit_requests: 10000000
   rate_limit_expiry: 60
 
 storage:

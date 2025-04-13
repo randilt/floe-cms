@@ -21,7 +21,7 @@ import (
 	"github.com/randilt/floe-cms/internal/storage"
 )
 
-//go:embed web/admin/dist/*
+//go:embed web/admin/dist
 var AdminUIAssets embed.FS
 
 func main() {
