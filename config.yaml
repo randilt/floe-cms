@@ -1,0 +1,38 @@
+# config.yaml
+server:
+  host: 0.0.0.0
+  port: 8080
+  graceful_shutdown: 30
+  timeouts:
+    read: 15
+    write: 15
+    idle: 60
+
+database:
+  type: sqlite # sqlite, mysql, or postgres
+  url: floe.db # Used for SQLite
+  host: localhost
+  port: 5432
+  username: floe
+  password: floe
+  name: floe
+  ssl_mode: disable
+
+auth:
+  jwt_secret: "" # Will be generated if empty
+  access_token_expiry: 900 # 15 minutes
+  refresh_token_expiry: 604800 # 7 days
+  admin_email: admin@floe.cms
+  admin_password: adminpassword
+  password_min_length: 8
+  rate_limit_requests: 100
+  rate_limit_expiry: 60
+
+storage:
+  type: local
+  uploads_dir: ./uploads
+
+cache:
+  type: memory # memory or redis
+  redis_url: redis://localhost:6379/0
+  ttl: 300 # 5 minutes
