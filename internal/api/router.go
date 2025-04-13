@@ -80,6 +80,15 @@ func NewRouter(authManager *auth.Manager, db *db.DB, storage storage.Manager, ad
 	r.Group(func(r chi.Router) {
 		r.Use(mw.AuthMiddleware(authManager))
 
+		// Content management routes with explicit workspace
+		r.Route("/api/workspaces/{workspaceId}/content", func(r chi.Router) {
+			r.Post("/", contentHandler.CreateContent)
+			r.Get("/", contentHandler.ListContent)
+			r.Get("/{id}", contentHandler.GetContent)
+			r.Put("/{id}", contentHandler.UpdateContent)
+			r.Delete("/{id}", contentHandler.DeleteContent)
+		})
+
 		// Auth routes
 		r.Post("/api/auth/logout", authHandler.Logout)
 

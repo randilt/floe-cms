@@ -169,19 +169,41 @@ func (h *ContentHandler) UpdateContent(w http.ResponseWriter, r *http.Request) {
 
 // GetContent handles getting a single content item
 func (h *ContentHandler) GetContent(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Content ID is required")
-		return
-	}
+    id := chi.URLParam(r, "id")
+    if id == "" {
+        utils.RespondWithError(w, http.StatusBadRequest, "Content ID is required")
+        return
+    }
 
-	var content models.Content
-	if err := h.db.Preload("Author").Preload("ContentType").First(&content, id).Error; err != nil {
-		utils.RespondWithError(w, http.StatusNotFound, "Content not found")
-		return
-	}
+    var content models.Content
+    if err := h.db.Preload("Author").Preload("ContentType").Preload("Workspace").First(&content, id).Error; err != nil {
+        utils.RespondWithError(w, http.StatusNotFound, "Content not found")
+        return
+    }
 
-	utils.RespondWithSuccess(w, http.StatusOK, content)
+    // Get user from context
+    claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+    if !ok {
+        utils.RespondWithError(w, http.StatusInternalServerError, "Failed to get user from context")
+        return
+    }
+
+    // Check if user has access to this content's workspace
+    if claims.RoleName != "admin" {
+        // For non-admin users, check if they have access to this workspace
+        var count int64
+        if err := h.db.Model(&models.UserWorkspace{}).Where("user_id = ? AND workspace_id = ?", claims.UserID, content.WorkspaceID).Count(&count).Error; err != nil {
+            utils.RespondWithError(w, http.StatusInternalServerError, "Failed to check workspace access")
+            return
+        }
+
+        if count == 0 {
+            utils.RespondWithError(w, http.StatusForbidden, "You don't have access to this content")
+            return
+        }
+    }
+
+    utils.RespondWithSuccess(w, http.StatusOK, content)
 }
 
 // ListContent handles listing content items

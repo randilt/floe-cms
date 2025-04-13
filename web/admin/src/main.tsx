@@ -16,7 +16,12 @@ axios.interceptors.response.use(
     const originalRequest = error.config;
 
     // If the error is 401 and we haven't already tried to refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // AND this is not a refresh token request itself
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes("/api/auth/refresh")
+    ) {
       originalRequest._retry = true;
 
       try {

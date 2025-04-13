@@ -82,8 +82,15 @@ export default function UserManagement() {
     setError("");
     setSuccess("");
 
+    // Convert role_id from string to number
+    const userData = {
+      ...newUser,
+      role_id: parseInt(newUser.role_id, 10),
+      workspace_id: currentWorkspace?.id,
+    };
+
     try {
-      const response = await axios.post("/api/users", newUser);
+      const response = await axios.post("/api/users", userData);
 
       if (response.data.success) {
         setUsers([...users, response.data.data]);

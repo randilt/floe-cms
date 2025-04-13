@@ -30,13 +30,15 @@ func NewUserHandler(db *db.DB) *UserHandler {
 
 // CreateUserRequest represents a request to create a user
 type CreateUserRequest struct {
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	RoleID    uint   `json:"role_id"`
+    Email       string `json:"email"`
+    Password    string `json:"password"`
+    FirstName   string `json:"first_name"`
+    LastName    string `json:"last_name"`
+    RoleID      uint   `json:"role_id"`
+    WorkspaceID uint   `json:"workspace_id"`
 }
 
+// CreateUser handles user creation
 // CreateUser handles user creation
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req CreateUserRequest
@@ -80,6 +82,13 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Use a transaction to ensure user and workspace association are created together
+	tx := h.db.Begin()
+	if tx.Error != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to start transaction")
+		return
+	}
+
 	// Create user
 	user := models.User{
 		Email:        req.Email,
@@ -90,8 +99,29 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Active:       true,
 	}
 
-	if err := h.db.Create(&user).Error; err != nil {
+	if err := tx.Create(&user).Error; err != nil {
+		tx.Rollback()
 		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to create user")
+		return
+	}
+
+	// Associate user with workspace if workspaceID is provided
+	if req.WorkspaceID > 0 {
+		userWorkspace := models.UserWorkspace{
+			UserID:      user.ID,
+			WorkspaceID: req.WorkspaceID,
+		}
+
+		if err := tx.Create(&userWorkspace).Error; err != nil {
+			tx.Rollback()
+			utils.RespondWithError(w, http.StatusInternalServerError, "Failed to associate user with workspace")
+			return
+		}
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		return
 	}
 

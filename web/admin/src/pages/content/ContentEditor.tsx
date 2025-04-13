@@ -9,8 +9,9 @@ import AuthContext from "../../context/AuthContext";
 
 export default function ContentEditor() {
   const { id } = useParams();
+  const { currentWorkspace, workspaces, setCurrentWorkspace } =
+    useContext(AuthContext);
   const navigate = useNavigate();
-  const { currentWorkspace } = useContext(AuthContext);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -63,23 +64,54 @@ export default function ContentEditor() {
     setError("");
 
     try {
-      const response = await axios.get(`/api/content/${contentId}`);
+      const response = await axios.get(
+        `/api/workspaces/${currentWorkspace.id}/content/${contentId}`
+      );
       if (response.data.success) {
+        // If content belongs to a different workspace than the current one,
+        // make sure we handle it properly
+        const workspaceId = response.data.data.workspace_id;
+
+        // Check if this content belongs to one of the user's workspaces
+        const workspaceExists = workspaces.some((ws) => ws.id === workspaceId);
+
+        if (!workspaceExists) {
+          setError("You don't have access to this content's workspace");
+          return;
+        }
+
+        // If the content belongs to a different workspace than currently selected,
+        // consider switching workspaces automatically
+        if (workspaceId !== currentWorkspace?.id) {
+          const workspace = workspaces.find((ws) => ws.id === workspaceId);
+          if (workspace) {
+            // Option 1: Switch workspace automatically
+            setCurrentWorkspace(workspace);
+
+            // Option 2: Or ask the user if they want to switch
+            // if (confirm(`This content belongs to workspace "${workspace.name}". Switch to this workspace?`)) {
+            //   setCurrentWorkspace(workspace);
+            // } else {
+            //   navigate('/content');
+            //   return;
+            // }
+          }
+        }
+
         setContent({
           title: response.data.data.title || "",
           slug: response.data.data.slug || "",
           body: response.data.data.body || "",
           status: response.data.data.status || "draft",
           content_type_id: response.data.data.content_type_id || "",
-          workspace_id:
-            response.data.data.workspace_id || currentWorkspace?.id || "",
+          workspace_id: response.data.data.workspace_id,
           meta_data: response.data.data.meta_data || "",
         });
       } else {
-        setError("Failed to load content");
+        setError(response.data.error || "Failed to load content");
       }
     } catch (err: any) {
-      setError("Failed to load content");
+      setError(err.response?.data?.error || "Failed to load content");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -126,16 +158,22 @@ export default function ContentEditor() {
       let response;
 
       if (id && id !== "new") {
-        response = await axios.put(`/api/content/${id}`, contentToSave);
+        // This is editing an existing post
+        response = await axios.put(
+          `/api/workspaces/${currentWorkspace.id}/content/${id}`,
+          contentToSave
+        );
       } else {
-        response = await axios.post("/api/content", contentToSave);
+        // This is creating a new post
+        response = await axios.post(
+          `/api/workspaces/${currentWorkspace.id}/content`,
+          contentToSave
+        );
       }
 
       if (response.data.success) {
         setSuccess("Content saved successfully");
-        if (id === "new") {
-          navigate(`/content/${response.data.data.id}`);
-        }
+        navigate("/content");
       } else {
         setError(response.data.error || "Failed to save content");
       }
