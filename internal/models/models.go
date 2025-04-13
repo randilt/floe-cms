@@ -18,7 +18,7 @@ type BaseModel struct {
 // User represents a user in the system
 type User struct {
 	BaseModel
-	Email          string          `gorm:"uniqueIndex;not null" json:"email"`
+	Email          string          `gorm:"uniqueIndex:idx_user_email,length:255;not null" json:"email"`
 	PasswordHash   string          `gorm:"not null" json:"-"`
 	FirstName      string          `json:"first_name"`
 	LastName       string          `json:"last_name"`
@@ -32,7 +32,7 @@ type User struct {
 // Role represents a user role in the system
 type Role struct {
 	BaseModel
-	Name        string       `gorm:"uniqueIndex;not null" json:"name"`
+	Name        string       `gorm:"uniqueIndex:idx_role_name,length:100;not null" json:"name"`
 	Description string       `json:"description"`
 	Permissions []Permission `gorm:"many2many:role_permissions;" json:"permissions"`
 }
@@ -40,7 +40,7 @@ type Role struct {
 // Permission represents a permission in the system
 type Permission struct {
 	BaseModel
-	Name        string `gorm:"uniqueIndex;not null" json:"name"`
+	Name        string `gorm:"uniqueIndex:idx_permission_name,length:100;not null" json:"name"`
 	Description string `json:"description"`
 }
 
@@ -48,7 +48,7 @@ type Permission struct {
 type Workspace struct {
 	BaseModel
 	Name          string          `gorm:"not null" json:"name"`
-	Slug          string          `gorm:"uniqueIndex;not null" json:"slug"`
+	Slug          string          `gorm:"uniqueIndex:idx_workspace_slug,length:100;not null" json:"slug"`
 	Description   string          `json:"description"`
 	UserWorkspaces []UserWorkspace `json:"-"`
 	Contents      []Content       `json:"-"`
@@ -71,7 +71,7 @@ type ContentType struct {
 	WorkspaceID  uint            `json:"workspace_id"`
 	Workspace    Workspace       `json:"-"`
 	Name         string          `gorm:"not null" json:"name"`
-	Slug         string          `gorm:"not null" json:"slug"`
+	Slug         string          `gorm:"not null;index:idx_content_type_slug,length:100" json:"slug"`
 	Description  string          `json:"description"`
 	Fields       []ContentField  `gorm:"serializer:json" json:"fields"`
 	Contents     []Content       `json:"-"`
@@ -93,7 +93,7 @@ type Content struct {
 	ContentTypeID uint        `json:"content_type_id"`
 	ContentType   ContentType `json:"content_type"`
 	Title         string      `gorm:"not null" json:"title"`
-	Slug          string      `gorm:"not null" json:"slug"`
+	Slug          string      `gorm:"not null;index:idx_content_slug,length:100" json:"slug"`
 	Body          string      `gorm:"type:text" json:"body"`
 	Status        string      `gorm:"default:'draft'" json:"status"`
 	AuthorID      uint        `json:"author_id"`
@@ -102,7 +102,6 @@ type Content struct {
 	MetaData      string      `gorm:"type:text" json:"meta_data"`
 }
 
-// Media represents media files in the system
 // Media represents media files in the system
 type Media struct {
     BaseModel
@@ -114,7 +113,7 @@ type Media struct {
     MimeType    string    `json:"mime_type"`
     Size        int64     `json:"size"`
     UploadedBy  uint      `json:"uploaded_by"`
-    User        User      `gorm:"foreignKey:UploadedBy" json:"user"` // Add foreignKey tag here
+    User        User      `gorm:"foreignKey:UploadedBy" json:"user"`
 }
 
 // RefreshToken represents a refresh token for a user
@@ -122,7 +121,7 @@ type RefreshToken struct {
 	BaseModel
 	UserID    uint      `gorm:"index" json:"user_id"`
 	User      User      `json:"-"`
-	Token     string    `gorm:"uniqueIndex" json:"-"`
+	Token     string    `gorm:"uniqueIndex:idx_refresh_token,length:255" json:"-"`
 	ExpiresAt time.Time `json:"expires_at"`
 	Revoked   bool      `gorm:"default:false" json:"revoked"`
 }
