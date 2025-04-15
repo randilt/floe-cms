@@ -173,7 +173,7 @@ export default function ContentEditor() {
 
       if (response.data.success) {
         setSuccess("Content saved successfully");
-        navigate("/content");
+        navigate("/content")
       } else {
         setError(response.data.error || "Failed to save content");
       }
