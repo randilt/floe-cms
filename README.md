@@ -32,11 +32,11 @@ Floe CMS is a lightweight, production-ready Content Management System written in
 
 ### Binary Installation
 
-Download the latest release from the [Releases page](https://github.com/yourusername/floe-cms/releases).
+Download the latest release from the [Releases page](https://github.com/randilt/floe-cms/releases).
 
 ```bash
 # Download the binary
-curl -L https://github.com/yourusername/floe-cms/releases/latest/download/floe-cms-linux-amd64 -o floe-cms
+curl -L https://github.com/randilt/floe-cms/releases/latest/download/floe-cms-linux-amd64 -o floe-cms
 
 # Make it executable
 chmod +x floe-cms
@@ -48,15 +48,15 @@ chmod +x floe-cms
 ### Docker Installation
 
 ```bash
-docker pull yourusername/floe-cms:latest
-docker run -p 8080:8080 -v floe-data:/app/data yourusername/floe-cms:latest
+docker pull randilt/floe-cms:latest
+docker run -p 8080:8080 -v floe-data:/app/data randilt/floe-cms:latest
 ```
 
 ### Building from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/floe-cms.git
+git clone https://github.com/randilt/floe-cms.git
 cd floe-cms
 
 # Build the frontend
@@ -191,7 +191,7 @@ docker run -d \
   -v floe-data:/app/data \
   -e FLOE_DATABASE_URL=/app/data/floe.db \
   -e FLOE_STORAGE_UPLOADS_DIR=/app/data/uploads \
-  yourusername/floe-cms:latest
+  randilt/floe-cms:latest
 ```
 
 ### Systemd Service
@@ -489,7 +489,7 @@ floe-cms/
 1. **Clone the Repository**:
 
    ```bash
-   git clone https://github.com/yourusername/floe-cms.git
+   git clone https://github.com/randilt/floe-cms.git
    cd floe-cms
    ```
 
@@ -611,7 +611,7 @@ Floe CMS is licensed under the MIT License. See [LICENSE](LICENSE) for more info
 
 ## Contact
 
-For questions, issues, or support, please [open an issue](https://github.com/yourusername/floe-cms/issues) on GitHub.
+For questions, issues, or support, please [open an issue](https://github.com/randilt/floe-cms/issues) on GitHub.
 
 ---
 
