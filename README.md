@@ -1,6 +1,6 @@
 # Floe CMS
 
-![Floe CMS Logo](https://via.placeholder.com/200x80?text=Floe+CMS)
+> **⚠️ Under Development**: Floe CMS is actively being developed. Features may be incomplete, and breaking changes may occur. Please check the [issues page](https://github.com/randilt/floe-cms/issues) for updates or to report bugs.
 
 Floe CMS is a lightweight, production-ready Content Management System written in Go. It's designed to be deployed as a single binary with all features included, making it easy to install and maintain.
 
